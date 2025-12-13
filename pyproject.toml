@@ -1,0 +1,27 @@
+[project]
+name = "demo-banking-website"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "TimurSamatov",email = "cooool.loki@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+]
+
+[dependency-groups]
+dev = [
+    "playwright (>=1.57.0,<2.0.0)",
+    "pytest (>=9.0.2,<10.0.0)",
+    "requests (>=2.32.5,<3.0.0)",
+    "allure-pytest (>=2.15.2,<3.0.0)"
+]
+
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
