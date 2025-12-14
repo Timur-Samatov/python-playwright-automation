@@ -19,28 +19,31 @@ def test_get_accounts_for_customer(base_url, user_1):
         customer_id = api_client.get_customer_id(
             username=user_1["username"], password=user_1["password"]
         )
-        # Call /accounts?customerId={id} or similar endpoint
         accounts_response = api_client.get_accounts_by_customer_id(customer_id)
+        # Use accountId from the previous test
+        account_id = accounts_response["data"][0]["id"]
+
+        # Call /accounts/{id}
+        account_details = api_client.get_account_details(account_id)
+        account_data = account_details["data"]
 
         # Validate:
-        # Status code 200
-        assert accounts_response["status_code"] == 200
-        # Non-empty list of accounts
-        accounts_data = accounts_response["data"]
-        assert isinstance(accounts_data, list), "Expected list of accounts"
-        assert len(accounts_data) > 0, "Customer should have at least one account"
-        # Each account has: id, type, balance
-        for account in accounts_data:
-            assert "id" in account
-            assert "type" in account
-            assert "balance" in account
-            assert account["type"] in [
-                account_type.value for account_type in AccountType
-            ]
+        # Correct account ID
+        # Balance field
+        # Correct data types
+        assert account_data["id"] == account_id
+        assert "balance" in account_data
+        assert isinstance(account_data["id"], int)
+        assert isinstance(account_data["customerId"], int)
+        assert isinstance(account_data["type"], str)
+        assert isinstance(account_data["balance"], (int, float))
+        assert account_data["type"] in [
+            account_type.value for account_type in AccountType
+        ]
 
         # Schema validation
         validation_result = validator.validate_response(
-            accounts_data, ParaBankSchemas.get_accounts_list_schema()
+            account_data, ParaBankSchemas.get_account_schema()
         )
 
         assert validation_result[

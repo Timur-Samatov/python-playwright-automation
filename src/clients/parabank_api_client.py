@@ -74,36 +74,6 @@ class ParaBankAPIClient:
         response = self.session.get(url)
         return self._handle_response(response)
 
-    def get_transaction_history(self, account_id):
-        """
-        Get transaction history for an account.
-
-        Args:
-            account_id (str): Account identifier
-
-        Returns:
-            dict: List of transactions
-        """
-        url = (
-            f"{self.base_url}/parabank/services/bank/accounts/{account_id}/transactions"
-        )
-        response = self.session.get(url)
-        return self._handle_response(response)
-
-    def get_transaction_details(self, transaction_id):
-        """
-        Get detailed information for a specific transaction.
-
-        Args:
-            transaction_id (str): Transaction identifier
-
-        Returns:
-            dict: Transaction details
-        """
-        url = f"{self.base_url}/parabank/services/bank/transactions/{transaction_id}"
-        response = self.session.get(url)
-        return self._handle_response(response)
-
     def transfer_funds(self, from_account_id, to_account_id, amount):
         """
         Transfer funds between accounts.
@@ -214,96 +184,11 @@ class ParaBankAPIClient:
         response = self.session.post(url, params=params)
         return self._handle_response(response)
 
-    def pay_bill(
-        self,
-        account_id,
-        amount,
-        payee_name,
-        payee_address,
-        payee_city,
-        payee_state,
-        payee_zip,
-        payee_phone,
-        payee_account,
-    ):
-        """
-        Pay a bill from an account.
-
-        Args:
-            account_id (str): Account to pay from
-            amount (float): Payment amount
-            payee_name (str): Payee name
-            payee_address (str): Payee street address
-            payee_city (str): Payee city
-            payee_state (str): Payee state
-            payee_zip (str): Payee ZIP code
-            payee_phone (str): Payee phone number
-            payee_account (str): Payee account number
-
-        Returns:
-            dict: Bill payment result
-        """
-        url = f"{self.base_url}/parabank/services/bank/billpay"
-        params = {
-            "accountId": account_id,
-            "amount": str(amount),
-            "payee.name": payee_name,
-            "payee.address.street": payee_address,
-            "payee.address.city": payee_city,
-            "payee.address.state": payee_state,
-            "payee.address.zipCode": payee_zip,
-            "payee.phoneNumber": payee_phone,
-            "payee.accountNumber": payee_account,
-        }
-
-        response = self.session.post(url, params=params)
+    def initialize_database(self):
+        """Initialize the ParaBank database."""
+        url = f"{self.base_url}/parabank/services/bank/initializeDB"
+        response = self.session.post(url)
         return self._handle_response(response)
-
-    def find_transactions(
-        self, account_id, transaction_type=None, amount=None, date_range=None
-    ):
-        """
-        Find transactions by criteria.
-
-        Args:
-            account_id (str): Account identifier
-            transaction_type (str, optional): Type of transaction to find
-            amount (float, optional): Specific amount to search for
-            date_range (dict, optional): Date range with 'from' and 'to' keys
-
-        Returns:
-            dict: Matching transactions
-        """
-        base_url = (
-            f"{self.base_url}/parabank/services/bank/accounts/{account_id}/transactions"
-        )
-
-        if transaction_type:
-            url = (
-                f"{base_url}/onDate/{date_range['date']}"
-                if date_range and "date" in date_range
-                else f"{base_url}/month/{transaction_type}"
-            )
-        elif amount:
-            url = f"{base_url}/amount/{amount}"
-        elif date_range:
-            url = f"{base_url}/fromDate/{date_range['from']}/toDate/{date_range['to']}"
-        else:
-            url = base_url
-
-        response = self.session.get(url)
-        return self._handle_response(response)
-
-    # def reset_database(self):
-    #     """
-    #     Reset the ParaBank database (useful for testing).
-
-    #     Returns:
-    #         dict: Reset operation result
-    #     """
-    #     url = f"{self.base_url}/parabank/services/bank/initializeDB"
-    #     response = self.session.post(url)
-    #     return self._handle_response(response)
 
     def close(self):
         """Close the HTTP session and cleanup resources."""
