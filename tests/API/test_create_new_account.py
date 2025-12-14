@@ -4,8 +4,8 @@ from src.enums.account_types import AccountType
 from src.schemas.parabank_schemas import ParaBankSchemas
 
 
-def test_get_account_details(base_url, user_1):
-    """Test retrieving account details for a specific customer with validation."""
+def test_create_new_account(base_url, user_1):
+    """Test creating a new account for a customer with response validation."""
 
     # Initialize API client and validator
     validator = ResponseValidationService()
@@ -23,27 +23,23 @@ def test_get_account_details(base_url, user_1):
         # Use accountId from the previous test
         account_id = accounts_response["data"][0]["id"]
 
-        # Call /accounts/{id}
-        account_details = api_client.get_account_details(account_id)
-        account_data = account_details["data"]
+        # Send POST to create a new account
+        new_account_response = api_client.create_account(
+            customer_id=customer_id,
+            from_account_id=account_id,
+            account_type=AccountType.SAVINGS,
+        )
 
         # Validate:
-        # Correct account ID
-        # Balance field
-        # Correct data types
-        assert account_data["id"] == account_id
-        assert "balance" in account_data
-        assert isinstance(account_data["id"], int)
-        assert isinstance(account_data["customerId"], int)
-        assert isinstance(account_data["type"], str)
-        assert isinstance(account_data["balance"], (int, float))
-        assert account_data["type"] in [
-            account_type.value for account_type in AccountType
-        ]
+        # 200/201 status
+        assert new_account_response["status_code"] in [200, 201]
+        # Correct fields in response
+        new_account_data = new_account_response["data"]
+        assert new_account_data["customerId"] == customer_id
 
         # Schema validation
         validation_result = validator.validate_response(
-            account_data, ParaBankSchemas.get_account_schema()
+            new_account_data, ParaBankSchemas.get_account_schema()
         )
 
         assert validation_result[

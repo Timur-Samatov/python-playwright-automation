@@ -61,15 +61,7 @@ class ParaBankAPIClient:
         return self._handle_response(response)
 
     def get_account_details(self, account_id):
-        """
-        Get detailed information for a specific account.
-
-        Args:
-            account_id (str): Account identifier
-
-        Returns:
-            dict: Account details including balance and type
-        """
+        """Get detailed information for a specific account."""
         url = f"{self.base_url}/parabank/services/bank/accounts/{account_id}"
         response = self.session.get(url)
         return self._handle_response(response)
@@ -79,9 +71,9 @@ class ParaBankAPIClient:
         Transfer funds between accounts.
 
         Args:
-            from_account_id (str): Source account ID
-            to_account_id (str): Destination account ID
-            amount (float): Amount to transfer
+            from_account_id (int): Source account ID
+            to_account_id (int): Destination account ID
+            amount (int, float): Amount to transfer
 
         Returns:
             dict: Transfer result
@@ -101,8 +93,8 @@ class ParaBankAPIClient:
         Withdraw funds from an account.
 
         Args:
-            account_id (str): Account identifier
-            amount (float): Amount to withdraw
+            account_id (int): Account identifier
+            amount (int, float): Amount to withdraw
 
         Returns:
             dict: Withdrawal result
@@ -119,7 +111,7 @@ class ParaBankAPIClient:
 
         Args:
             account_id (str): Account identifier
-            amount (float): Amount to deposit
+            amount (int, float): Amount to deposit
 
         Returns:
             dict: Deposit result
@@ -131,31 +123,33 @@ class ParaBankAPIClient:
         return self._handle_response(response)
 
     def create_account(
-        self, customer_id, account_type=AccountType.CHECKING, from_account_id=None
+        self, customer_id, from_account_id, account_type=AccountType.CHECKING
     ):
         """
         Create a new account for a customer.
 
         Args:
-            customer_id (str): Customer identifier
+            customer_id (int): Customer identifier
+            from_account_id (int): Source account for initial deposit
             account_type (AccountType): Type of account to create
-            from_account_id (str, optional): Source account for initial deposit
+            from_account_id (int): Source account for initial deposit
 
         Returns:
             dict: New account information
         """
         url = f"{self.base_url}/parabank/services/bank/createAccount"
+
+        # Convert the string AccountType (e.g., 'CHECKING') into its required integer API representation.
+        if isinstance(account_type, AccountType):
+            account_type_id = account_type.id
+        else:
+            raise ValueError(f"Expected AccountType, got: {type(account_type)}")
+
         params = {
             "customerId": customer_id,
-            "newAccountType": (
-                account_type.value
-                if isinstance(account_type, AccountType)
-                else account_type
-            ),
+            "newAccountType": account_type_id,
+            "fromAccountId": from_account_id,
         }
-
-        if from_account_id:
-            params["fromAccountId"] = from_account_id
 
         response = self.session.post(url, params=params)
         return self._handle_response(response)
@@ -165,10 +159,10 @@ class ParaBankAPIClient:
         Request a loan for a customer.
 
         Args:
-            customer_id (str): Customer identifier
+            customer_id (int): Customer identifier
             amount (float): Loan amount requested
-            down_payment (float): Down payment amount
-            from_account_id (str): Account for down payment
+            down_payment (int, float): Down payment amount
+            from_account_id (int): Account for down payment
 
         Returns:
             dict: Loan application result

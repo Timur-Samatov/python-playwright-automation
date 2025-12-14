@@ -5,7 +5,7 @@ from src.schemas.parabank_schemas import ParaBankSchemas
 
 
 def test_get_accounts_for_customer(base_url, user_1):
-    """Test retrieving accounts for a customer with validation."""
+    """Test retrieving accounts list for a customer with validation."""
 
     # Initialize API client and validator
     validator = ResponseValidationService()
