@@ -1,5 +1,5 @@
 import requests
-from tests.utils.encoding_utils import encode_credentials
+from src.utils.encoding_utils import encode_credentials
 from src.enums.account_types import AccountType
 
 

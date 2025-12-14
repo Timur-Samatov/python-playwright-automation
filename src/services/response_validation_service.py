@@ -1,4 +1,4 @@
-from tests.utils.schema_validator import SchemaValidator
+from src.utils.schema_validator import SchemaValidator
 
 
 class ResponseValidationService:
