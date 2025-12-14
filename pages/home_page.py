@@ -14,3 +14,7 @@ class HomePage(BasePage):
 
     def goto(self):
         self.page.goto(f"{self.base_url}/parabank/index.htm")
+
+    def login(self, username, password):
+        self.goto()
+        self.customer_login.login(username, password)

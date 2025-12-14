@@ -8,6 +8,7 @@ class OverviewPage(BasePage):
         super().__init__(page, base_url)
         # Locators
         self.account_list = self.page.locator("#accountTable")
+        self.account_links = self.page.locator("#accountTable a")
 
     def goto(self):
         self.page.goto(f"{self.base_url}/parabank/overview.htm")
