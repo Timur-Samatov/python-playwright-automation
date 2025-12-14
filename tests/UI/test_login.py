@@ -20,11 +20,12 @@ def test_success_login(page, base_url, user_1):
     expect(home_page.welcome_message).to_have_text(f"Welcome {user_1['full_name']}")
 
     # Account list is displayed
-    expect(overview_page.account_table).to_be_visible()
+    expect(overview_page.account_list).to_be_visible()
 
 
-def test_invalid_login(page, base_url):
+def test_failed_login(page, base_url):
     home_page = HomePage(page, base_url)
+    overview_page = OverviewPage(page, base_url)
 
     # Open the ParaBank homepage
     home_page.goto()
@@ -37,4 +38,11 @@ def test_invalid_login(page, base_url):
     expect(home_page.error_message).to_be_visible()
     expect(home_page.error_message).to_have_text(
         "The username and password could not be verified."
+    )
+    # Accounts page is not accessible
+    expect(overview_page.account_list).to_have_count(0)
+    overview_page.goto()
+    expect(overview_page.account_list).to_have_count(0)
+    expect(home_page.error_message).to_have_text(
+        "An internal error has occurred and has been logged."
     )
