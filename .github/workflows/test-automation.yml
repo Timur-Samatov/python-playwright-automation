@@ -12,8 +12,14 @@ env:
   NODE_VERSION: "24"
 
 jobs:
-  .setup_poetry:
-    steps: &setup_poetry_steps
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -36,16 +42,6 @@ jobs:
           poetry install
           poetry run playwright install --with-deps chromium
 
-  api-tests:
-    name: API Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - *setup_poetry_steps
-
       - name: Run API Tests
         env:
           PLAYWRIGHT_USERNAME_1: ${{ secrets.PLAYWRIGHT_USERNAME_1 }}
@@ -53,11 +49,11 @@ jobs:
           PLAYWRIGHT_USER_FULLNAME_1: ${{ secrets.PLAYWRIGHT_USER_FULLNAME_1 }}
         run: |
           poetry run pytest tests/API/ \
-            --alluredir=reports/allure-api \
+            --alluredir=reports/allure-api
 
       - name: Upload API Test Reports
         uses: actions/upload-artifact@v4
-        if: always() # Upload even if tests fail
+        if: always()
         with:
           name: api-test-reports-${{ github.run_number }}
           path: |
@@ -72,7 +68,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - *setup_poetry_steps
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dependencies
+        run: |
+          poetry install
+          poetry run playwright install --with-deps chromium
 
       - name: Run UI Tests
         env:
@@ -83,7 +99,7 @@ jobs:
           poetry run pytest tests/UI/ \
             --browser=chromium \
             --headed=false \
-            --alluredir=reports/allure-ui \
+            --alluredir=reports/allure-ui
 
       - name: Upload UI Test Reports
         uses: actions/upload-artifact@v4
