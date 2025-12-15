@@ -5,15 +5,14 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
-  workflow_dispatch:
 
 env:
   PYTHON_VERSION: "3.14"
   NODE_VERSION: "20"
 
 jobs:
-  api-tests:
-    name: API Tests
+  tests:
+    name: Run Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -42,112 +41,49 @@ jobs:
           poetry install
           poetry run playwright install --with-deps chromium
 
-      - name: Run API Tests
+      - name: Run Tests
         env:
-          PLAYWRIGHT_USERNAME_1: ${{ secrets.PLAYWRIGHT_USERNAME_1 }}
-          PLAYWRIGHT_PASSWORD_1: ${{ secrets.PLAYWRIGHT_PASSWORD_1 }}
-          PLAYWRIGHT_USER_FULLNAME_1: ${{ secrets.PLAYWRIGHT_USER_FULLNAME_1 }}
+          USERNAME_1: ${{ secrets.USERNAME_1 }}
+          PASSWORD_1: ${{ secrets.PASSWORD_1 }}
+          USER_FULLNAME_1: ${{ secrets.USER_FULLNAME_1 }}
         run: |
-          poetry run pytest tests/API/ \
-            --alluredir=reports/allure-api \
-            --html=reports/html/api-report.html
-
-      - name: Upload API Test Reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: api-test-reports-${{ github.run_number }}
-          path: |
-            reports/allure-api/
-            reports/html/api-report.html
-          retention-days: 30
-
-  ui-tests:
-    name: UI Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Install dependencies
-        run: |
-          poetry install
-          poetry run playwright install --with-deps chromium
-
-      - name: Run UI Tests
-        env:
-          PLAYWRIGHT_USERNAME_1: ${{ secrets.PLAYWRIGHT_USERNAME_1 }}
-          PLAYWRIGHT_PASSWORD_1: ${{ secrets.PLAYWRIGHT_PASSWORD_1 }}
-          PLAYWRIGHT_USER_FULLNAME_1: ${{ secrets.PLAYWRIGHT_USER_FULLNAME_1 }}
-        run: |
-          poetry run pytest tests/UI/ \
+          poetry run pytest tests/ \
             --browser=chromium \
-            --alluredir=reports/allure-ui \
-            --html=reports/html/ui-report.html
+            --alluredir=reports/allure \
+            --html=reports/html/report.html \
+            --self-contained-html
 
-      - name: Upload UI Test Reports
+      - name: Upload Test Reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ui-test-reports-${{ github.run_number }}
+          name: test-reports-${{ github.run_number }}
           path: |
-            reports/allure-ui/
-            reports/html/ui-report.html
+            reports/allure/
+            reports/html/report.html
             test-results/
-          retention-days: 30
-
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report-${{ github.run_number }}
-          path: playwright-report/
           retention-days: 30
 
   generate-allure-report:
     name: Generate Allure Report
     runs-on: ubuntu-latest
-    needs: [api-tests, ui-tests]
+    needs: [tests]
     if: always()
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download API Test Results
+      - name: Download Test Results
         uses: actions/download-artifact@v4
         with:
-          name: api-test-reports-${{ github.run_number }}
-          path: reports/
-
-      - name: Download UI Test Results
-        uses: actions/download-artifact@v4
-        with:
-          name: ui-test-reports-${{ github.run_number }}
+          name: test-reports-${{ github.run_number }}
           path: reports/
 
       - name: Generate Allure Report
         uses: simple-elf/allure-report-action@master
         with:
-          allure_results: reports/allure-api,reports/allure-ui
+          allure_results: reports/allure
           allure_report: allure-report
           allure_history: allure-history
 
@@ -159,7 +95,7 @@ jobs:
           retention-days: 30
 
       - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main'
+        if: always()
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
