@@ -49,7 +49,8 @@ jobs:
           PLAYWRIGHT_USER_FULLNAME_1: ${{ secrets.PLAYWRIGHT_USER_FULLNAME_1 }}
         run: |
           poetry run pytest tests/API/ \
-            --alluredir=reports/allure-api
+            --alluredir=reports/allure-api \
+            --html=reports/html/api-report.html
 
       - name: Upload API Test Reports
         uses: actions/upload-artifact@v4
@@ -58,6 +59,7 @@ jobs:
           name: api-test-reports-${{ github.run_number }}
           path: |
             reports/allure-api/
+            reports/html/api-report.html
           retention-days: 30
 
   ui-tests:
@@ -98,7 +100,8 @@ jobs:
         run: |
           poetry run pytest tests/UI/ \
             --browser=chromium \
-            --alluredir=reports/allure-ui
+            --alluredir=reports/allure-ui \
+            --html=reports/html/ui-report.html
 
       - name: Upload UI Test Reports
         uses: actions/upload-artifact@v4
@@ -107,6 +110,7 @@ jobs:
           name: ui-test-reports-${{ github.run_number }}
           path: |
             reports/allure-ui/
+            reports/html/ui-report.html
             test-results/
           retention-days: 30
 
