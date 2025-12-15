@@ -13,6 +13,7 @@ class ActivityPage(BasePage):
         self.balance_value = self.page.locator("#balance")
         self.account_type_label = self.page.get_by_text("Account Type:")
         self.account_type_value = self.page.locator("#accountType")
+        self.transactions_table = self.page.locator("#transactionTable")
 
     def goto(self, account_id):
         self.page.goto(f"{self.base_url}/parabank/activity.htm?id={account_id}")

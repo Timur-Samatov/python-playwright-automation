@@ -1,4 +1,3 @@
-import pytest
 from playwright.sync_api import expect
 from pages.home_page import HomePage
 from pages.overview_page import OverviewPage
