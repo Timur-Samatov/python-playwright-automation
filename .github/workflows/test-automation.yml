@@ -98,7 +98,6 @@ jobs:
         run: |
           poetry run pytest tests/UI/ \
             --browser=chromium \
-            --headed=false \
             --alluredir=reports/allure-ui
 
       - name: Upload UI Test Reports
