@@ -1,7 +1,9 @@
 import os
 import pytest
 import requests
+import allure
 from dotenv import load_dotenv
+from playwright.sync_api import Browser
 
 load_dotenv()
 
@@ -16,9 +18,9 @@ def base_url():
 def user_1():
     """Returns user data from environment variables."""
     user_data = {
-        "username": os.getenv("PLAYWRIGHT_USERNAME_1"),
-        "password": os.getenv("PLAYWRIGHT_PASSWORD_1"),
-        "full_name": os.getenv("PLAYWRIGHT_USER_FULLNAME_1"),
+        "username": os.getenv("USERNAME_1"),
+        "password": os.getenv("PASSWORD_1"),
+        "full_name": os.getenv("USER_FULLNAME_1"),
     }
     return user_data
 
@@ -76,3 +78,50 @@ def initialize_db(base_url):
 
 
 # Fixtures run in definition order; registered_user happens first, initialize_db cleanup happens last
+
+
+@pytest.fixture(scope="function")
+def page(browser: Browser, request):
+    """Create a new browser context and page for each test, with tracing enabled."""
+
+    # Create a new browser context
+    context = browser.new_context()
+
+    # Enable tracing for the context
+    context.tracing.start(screenshots=True, snapshots=True, sources=True)
+
+    page = context.new_page()
+    yield page
+
+    # Capture trace after test
+    # Save trace to a file
+    test_name = request.node.name
+    context.tracing.stop(path=f"test-results/traces/{test_name}_trace.zip")
+
+    # Close context
+    context.close()
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Enhanced test failure reporting with screenshots."""
+    outcome = yield
+    report = outcome.get_result()
+
+    # Handle test failures during the call phase
+    if report.when == "call" and report.failed:
+        page = item.funcargs.get("page")
+
+        if page:
+            # Save screenshot
+            screenshot_path = (
+                f"test-results/screenshots/{item.nodeid.replace('::', '_')}.png"
+            )
+            page.screenshot(path=screenshot_path)
+
+            # Attach screenshot to Allure report
+            allure.attach.file(
+                screenshot_path,
+                name="Screenshot on failure",
+                attachment_type=allure.attachment_type.PNG,
+            )
