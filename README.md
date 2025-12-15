@@ -138,7 +138,7 @@ poetry run pytest --alluredir=reports/allure --html=reports/html/report.html --s
 poetry run pytest --alluredir=reports/allure --allure-categories=allure-categories.json
 ```
 
-### 🔍 Allure Features Available
+### Allure Features Available
 
 - **Interactive dashboards** with test trends and statistics
 - **Step-by-step execution** details with screenshots
@@ -147,9 +147,9 @@ poetry run pytest --alluredir=reports/allure --allure-categories=allure-categori
 - **Screenshots and traces** for failed tests
 - **Test categorization** and filtering
 
-## 🔄 CI/CD Pipeline
+## CI/CD Pipeline
 
-### 🏗️ How the Pipeline Works
+### How the Pipeline Works
 
 The GitHub Actions workflow ([`.github/workflows/test-automation.yml`](.github/workflows/test-automation.yml)) provides fully automated testing:
 
@@ -212,36 +212,15 @@ env:
   USER_FULLNAME_1: ${{ secrets.USER_FULLNAME_1 }}
 ```
 
-#### **Parallel Job Execution**
-
-```yaml
-jobs:
-  tests: # Main test execution
-    runs-on: ubuntu-latest
-
-  generate-allure-report: # Report generation (runs after tests)
-    needs: [tests]
-    if: always() # Runs even if tests fail
-```
-
 #### **Deployment to GitHub Pages**
 
 Reports are automatically deployed and accessible via:
 
-- 🔗 **Latest Report**: `https://<username>.github.io/<repo>/reports/latest`
-- 🔗 **Specific Build**: `https://<username>.github.io/<repo>/reports/<build-number>`
-- 📊 **Interactive Allure Dashboard** with full test history
+- **Latest Report**: `https://<username>.github.io/<repo>/reports/latest`
+- **Specific Build**: `https://<username>.github.io/<repo>/reports/<build-number>`
+- **Interactive Allure Dashboard** with full test history
 
-### 🎯 Pipeline Benefits
-
-- ✅ **Zero-configuration testing** on every code change
-- ✅ **Automatic report publishing** with public URLs
-- ✅ **Cross-platform testing** (Linux environment)
-- ✅ **Artifact preservation** for debugging
-- ✅ **Parallel execution** for faster feedback
-- ✅ **Failure screenshots** and traces automatically captured
-
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 demo-banking-website/
