@@ -1,3 +1,4 @@
+import allure
 from src.clients.parabank_api_client import ParaBankAPIClient
 from src.services.response_validation_service import ResponseValidationService
 from src.enums.account_types import AccountType
@@ -23,25 +24,25 @@ def test_create_new_account(base_url, user_1):
         # Use accountId from the previous test
         account_id = accounts_response["data"][0]["id"]
 
-        # Send POST to create a new account
-        new_account_response = api_client.create_account(
-            customer_id=customer_id,
-            from_account_id=account_id,
-            account_type=AccountType.SAVINGS,
-        )
+        with allure.step("Send POST to create a new account"):
+            new_account_response = api_client.create_account(
+                customer_id=customer_id,
+                from_account_id=account_id,
+                account_type=AccountType.SAVINGS,
+            )
 
-        # Validate:
-        # 200/201 status
-        assert new_account_response["status_code"] in [200, 201]
-        # Correct fields in response
-        new_account_data = new_account_response["data"]
-        assert new_account_data["customerId"] == customer_id
+        with allure.step("Validate: 200/201 status"):
+            assert new_account_response["status_code"] in [200, 201]
 
-        # Schema validation
-        validation_result = validator.validate_response(
-            new_account_data, ParaBankSchemas.get_account_schema()
-        )
+        with allure.step("Validate: Correct fields in response"):
+            new_account_data = new_account_response["data"]
+            assert new_account_data["customerId"] == customer_id
 
-        assert validation_result[
-            "valid"
-        ], f"Schema validation failed: {validation_result.get('errors')}"
+            # Schema validation
+            validation_result = validator.validate_response(
+                new_account_data, ParaBankSchemas.get_account_schema()
+            )
+
+            assert validation_result[
+                "valid"
+            ], f"Schema validation failed: {validation_result.get('errors')}"

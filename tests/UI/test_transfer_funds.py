@@ -1,3 +1,4 @@
+import allure
 from playwright.sync_api import expect
 from pages.home_page import HomePage
 from pages.activity_page import ActivityPage
@@ -45,36 +46,39 @@ def test_transfer_funds(page, base_url, user_1):
 
     transfer_amount = 3.00
 
-    # Login
-    home_page.login(user_1["username"], user_1["password"])
-    # Navigate to “Transfer Funds”
-    transfer_page.goto()
-    # Transfer an amount (e.g., 10 USD) from one account to another
-    transfer_page.transfer_funds(
-        amount=transfer_amount,
-        from_account_id=source_account_id,
-        to_account_id=destination_account_id,
-    )
-    # Validate:
-    # Success message
-    expect(transfer_page.result_message).to_contain_text("Transfer Complete!")
-    expect(transfer_page.result_message).to_contain_text(
-        f"${transfer_amount:.2f} has been transferred from account #{source_account_id} to account #{destination_account_id}."
-    )
-    # Balances changed correctly (before → after)
-    activity_page.goto(source_account_id)
+    with allure.step("Login"):
+        home_page.login(user_1["username"], user_1["password"])
 
-    # Calculate expected balance and format it correctly
-    source_account_expected_balance = initial_source_balance - transfer_amount
+    with allure.step("Navigate to “Transfer Funds”"):
+        transfer_page.goto()
 
-    # Check balance changed correctly for source account
-    expect(activity_page.balance_value).to_have_text(
-        format_currency(source_account_expected_balance)
-    )
+    with allure.step("Transfer an amount (e.g., 10 USD) from one account to another"):
+        transfer_page.transfer_funds(
+            amount=transfer_amount,
+            from_account_id=source_account_id,
+            to_account_id=destination_account_id,
+        )
 
-    # Check balance changed correctly for destination account
-    activity_page.goto(destination_account_id)
-    expected_destination_balance = destination_account_balance + transfer_amount
-    expect(activity_page.balance_value).to_have_text(
-        format_currency(expected_destination_balance)
-    )
+    with allure.step("Validate: Success message"):
+        expect(transfer_page.result_message).to_contain_text("Transfer Complete!")
+        expect(transfer_page.result_message).to_contain_text(
+            f"${transfer_amount:.2f} has been transferred from account #{source_account_id} to account #{destination_account_id}."
+        )
+
+    with allure.step("Validate: Balances changed correctly (before → after)"):
+        activity_page.goto(source_account_id)
+
+        # Calculate expected balance and format it correctly
+        source_account_expected_balance = initial_source_balance - transfer_amount
+
+        # Check balance changed correctly for source account
+        expect(activity_page.balance_value).to_have_text(
+            format_currency(source_account_expected_balance)
+        )
+
+        # Check balance changed correctly for destination account
+        activity_page.goto(destination_account_id)
+        expected_destination_balance = destination_account_balance + transfer_amount
+        expect(activity_page.balance_value).to_have_text(
+            format_currency(expected_destination_balance)
+        )

@@ -3,13 +3,12 @@ import pytest
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()  # This loads the variables from the .env file
+load_dotenv()
 
 
 @pytest.fixture(scope="session")
 def base_url():
     """Returns the base URL for the Parabank application."""
-
     return "https://parabank.parasoft.com"
 
 
