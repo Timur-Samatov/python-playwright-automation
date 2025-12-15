@@ -1,0 +1,146 @@
+name: Test Automation Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.14"
+  NODE_VERSION: "24"
+
+.setup_poetry: &setup_poetry_steps
+  - name: Set up Python
+    uses: actions/setup-python@v4
+    with:
+      python-version: ${{ env.PYTHON_VERSION }}
+
+  - name: Set up Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: ${{ env.NODE_VERSION }}
+
+  - name: Install Poetry
+    uses: snok/install-poetry@v1
+    with:
+      version: latest
+      virtualenvs-create: true
+      virtualenvs-in-project: true
+
+  - name: Install dependencies
+    run: |
+      poetry install
+      poetry run playwright install --with-deps chromium
+
+jobs:
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - *setup_poetry_steps
+
+      - name: Run API Tests
+        env:
+          PLAYWRIGHT_USERNAME_1: ${{ secrets.PLAYWRIGHT_USERNAME_1 }}
+          PLAYWRIGHT_PASSWORD_1: ${{ secrets.PLAYWRIGHT_PASSWORD_1 }}
+          PLAYWRIGHT_USER_FULLNAME_1: ${{ secrets.PLAYWRIGHT_USER_FULLNAME_1 }}
+        run: |
+          poetry run pytest tests/API/ \
+            --alluredir=reports/allure-api \
+
+      - name: Upload API Test Reports
+        uses: actions/upload-artifact@v4
+        if: always() # Upload even if tests fail
+        with:
+          name: api-test-reports-${{ github.run_number }}
+          path: |
+            reports/allure-api/
+          retention-days: 30
+
+  ui-tests:
+    name: UI Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - *setup_poetry_steps
+
+      - name: Run UI Tests
+        env:
+          PLAYWRIGHT_USERNAME_1: ${{ secrets.PLAYWRIGHT_USERNAME_1 }}
+          PLAYWRIGHT_PASSWORD_1: ${{ secrets.PLAYWRIGHT_PASSWORD_1 }}
+          PLAYWRIGHT_USER_FULLNAME_1: ${{ secrets.PLAYWRIGHT_USER_FULLNAME_1 }}
+        run: |
+          poetry run pytest tests/UI/ \
+            --browser=chromium \
+            --headed=false \
+            --alluredir=reports/allure-ui \
+
+      - name: Upload UI Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test-reports-${{ github.run_number }}
+          path: |
+            reports/allure-ui/
+            test-results/
+          retention-days: 30
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ github.run_number }}
+          path: playwright-report/
+          retention-days: 30
+
+  generate-allure-report:
+    name: Generate Allure Report
+    runs-on: ubuntu-latest
+    needs: [api-tests, ui-tests]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download API Test Results
+        uses: actions/download-artifact@v4
+        with:
+          name: api-test-reports-${{ github.run_number }}
+          path: reports/
+
+      - name: Download UI Test Results
+        uses: actions/download-artifact@v4
+        with:
+          name: ui-test-reports-${{ github.run_number }}
+          path: reports/
+
+      - name: Generate Allure Report
+        uses: simple-elf/allure-report-action@master
+        with:
+          allure_results: reports/allure-api,reports/allure-ui
+          allure_report: allure-report
+          allure_history: allure-history
+
+      - name: Upload Combined Allure Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-${{ github.run_number }}
+          path: allure-report/
+          retention-days: 30
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: allure-report
+          destination_dir: reports/${{ github.run_number }}
