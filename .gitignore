@@ -52,6 +52,7 @@ coverage.xml
 cover/
 reports/
 !reports/.gitkeep
+test-results/
 
 # Translations
 *.mo
