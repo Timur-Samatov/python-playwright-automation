@@ -147,6 +147,41 @@ poetry run pytest --alluredir=reports/allure --allure-categories=allure-categori
 
 The GitHub Actions workflow ([`.github/workflows/test-automation.yml`](.github/workflows/test-automation.yml)) provides fully automated testing:
 
+#### **Database Initialization**
+
+- A dedicated `initialize-database` job runs first to reset ParaBank test data via the public initialize endpoint.
+- Uses `BASE_URL` from repository secrets, defaulting to `https://parabank.parasoft.com` if not set.
+- Performs a POST to `/parabank/services/bank/initializeDB` with retries and fails the pipeline if HTTP status is not 200 or 204.
+
+```yaml
+initialize-database:
+   runs-on: ubuntu-latest
+   env:
+      BASE_URL: ${{ secrets.BASE_URL || 'https://parabank.parasoft.com' }}
+   steps:
+      - name: Initialize ParaBank Database
+         id: init-db
+         run: |
+            echo "Initializing ParaBank database..."
+
+            response=$(curl -X POST "${{ env.BASE_URL }}/parabank/services/bank/initializeDB" \
+               --silent \
+               --write-out "HTTPSTATUS:%{http_code}" \
+               --fail-with-body \
+               --retry 3 \
+               --retry-delay 5 \
+               --max-time 60)
+
+            http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+
+            if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 204 ]; then
+               echo "✅ Database initialized successfully (HTTP: $http_code)"
+            else
+               echo "❌ Database initialization failed (HTTP: $http_code)"
+               exit 1
+            fi
+```
+
 #### **Pipeline Triggers**
 
 ```yaml
