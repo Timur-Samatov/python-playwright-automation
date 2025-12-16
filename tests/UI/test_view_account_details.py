@@ -7,15 +7,15 @@ from src.clients.parabank_api_client import ParaBankAPIClient
 from src.enums.account_types import AccountType
 
 
-def test_view_account_details(page, base_url, user_1):
+def test_view_account_details(page, base_url, fresh_registered_user):
     """Test viewing account details for a specific account."""
 
     # API Setup: Create preconditions - create account, to Transactions table exists
-    with ParaBankAPIClient(base_url=base_url, user_data=user_1) as api_client:
+    with ParaBankAPIClient(
+        base_url=base_url, user_data=fresh_registered_user
+    ) as api_client:
         # Get customer ID
-        customer_id = api_client.get_customer_id(
-            username=user_1["username"], password=user_1["password"]
-        )
+        customer_id = fresh_registered_user["customer_id"]
 
         # Get existing account Id
         accounts_response = api_client.get_accounts_by_customer_id(customer_id)
@@ -33,7 +33,9 @@ def test_view_account_details(page, base_url, user_1):
     activity_page = ActivityPage(page, base_url)
 
     with allure.step("Login"):
-        home_page.login(user_1["username"], user_1["password"])
+        home_page.login(
+            fresh_registered_user["username"], fresh_registered_user["password"]
+        )
 
     with allure.step("Open the first available account from the account list"):
         overview_page.account_links.first.click()

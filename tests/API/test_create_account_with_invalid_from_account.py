@@ -4,7 +4,7 @@ from src.services.response_validation_service import ResponseValidationService
 from src.enums.account_types import AccountType
 
 
-def test_create_account_with_invalid_from_account_id(base_url, user_1):
+def test_create_account_with_invalid_from_account_id(base_url, fresh_registered_user):
     """Test that creating a new account fails when using a non-existent from_account_id"""
 
     # Initialize API client and validator
@@ -12,13 +12,11 @@ def test_create_account_with_invalid_from_account_id(base_url, user_1):
 
     with ParaBankAPIClient(
         base_url=base_url,
-        user_data=user_1,
+        user_data=fresh_registered_user,
     ) as api_client:
 
         # Get customer ID
-        customer_id = api_client.get_customer_id(
-            username=user_1["username"], password=user_1["password"]
-        )
+        customer_id = fresh_registered_user["customer_id"]
         # Use a non-existent account ID to trigger validation error
         non_existent_account_id = 9999999
 

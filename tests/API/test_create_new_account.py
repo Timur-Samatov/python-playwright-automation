@@ -5,7 +5,7 @@ from src.enums.account_types import AccountType
 from src.schemas.parabank_schemas import ParaBankSchemas
 
 
-def test_create_new_account(base_url, user_1):
+def test_create_new_account(base_url, fresh_registered_user):
     """Test creating a new account for a customer with response validation."""
 
     # Initialize API client and validator
@@ -13,15 +13,13 @@ def test_create_new_account(base_url, user_1):
 
     with ParaBankAPIClient(
         base_url=base_url,
-        user_data=user_1,
+        user_data=fresh_registered_user,
     ) as api_client:
 
         # Get customer ID
-        customer_id = api_client.get_customer_id(
-            username=user_1["username"], password=user_1["password"]
-        )
+        customer_id = fresh_registered_user["customer_id"]
+
         accounts_response = api_client.get_accounts_by_customer_id(customer_id)
-        # Use accountId from the previous test
         account_id = accounts_response["data"][0]["id"]
 
         with allure.step("Send POST to create a new account"):

@@ -5,7 +5,7 @@ from src.enums.account_types import AccountType
 from src.schemas.parabank_schemas import ParaBankSchemas
 
 
-def test_get_accounts_for_customer(base_url, user_1):
+def test_get_accounts_for_customer(base_url, fresh_registered_user):
     """Test retrieving accounts list for a customer with validation."""
 
     # Initialize API client and validator
@@ -13,13 +13,11 @@ def test_get_accounts_for_customer(base_url, user_1):
 
     with ParaBankAPIClient(
         base_url=base_url,
-        user_data=user_1,
+        user_data=fresh_registered_user,
     ) as api_client:
 
         # Get customer ID
-        customer_id = api_client.get_customer_id(
-            username=user_1["username"], password=user_1["password"]
-        )
+        customer_id = fresh_registered_user["customer_id"]
 
         with allure.step("Call /accounts?customerId={id} or similar endpoint"):
             accounts_response = api_client.get_accounts_by_customer_id(customer_id)

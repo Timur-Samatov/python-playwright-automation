@@ -8,15 +8,15 @@ from src.enums.account_types import AccountType
 from src.utils.currency_utils import format_currency
 
 
-def test_transfer_funds(page, base_url, user_1):
+def test_transfer_funds(page, base_url, fresh_registered_user):
     """Test transferring funds between accounts."""
 
     # API Setup: Create preconditions - create account, get accounts IDs and balances
-    with ParaBankAPIClient(base_url=base_url, user_data=user_1) as api_client:
+    with ParaBankAPIClient(
+        base_url=base_url, user_data=fresh_registered_user
+    ) as api_client:
         # Get customer ID
-        customer_id = api_client.get_customer_id(
-            username=user_1["username"], password=user_1["password"]
-        )
+        customer_id = fresh_registered_user["customer_id"]
 
         # Get existing account Id
         accounts_response = api_client.get_accounts_by_customer_id(customer_id)
@@ -47,7 +47,9 @@ def test_transfer_funds(page, base_url, user_1):
     transfer_amount = 3.00
 
     with allure.step("Login"):
-        home_page.login(user_1["username"], user_1["password"])
+        home_page.login(
+            fresh_registered_user["username"], fresh_registered_user["password"]
+        )
 
     with allure.step("Navigate to “Transfer Funds”"):
         transfer_page.goto()
@@ -62,7 +64,7 @@ def test_transfer_funds(page, base_url, user_1):
     with allure.step("Validate: Success message"):
         expect(transfer_page.result_message).to_contain_text("Transfer Complete!")
         expect(transfer_page.result_message).to_contain_text(
-            f"${transfer_amount:.2f} has been transferred from account #{source_account_id} to account #{destination_account_id}."
+            f"{format_currency(transfer_amount)} has been transferred from account #{source_account_id} to account #{destination_account_id}."
         )
 
     with allure.step("Validate: Balances changed correctly (before → after)"):

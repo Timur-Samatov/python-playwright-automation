@@ -1,4 +1,5 @@
 import requests
+from os import urandom
 from src.utils.encoding_utils import encode_credentials
 from src.enums.account_types import AccountType
 
@@ -16,6 +17,111 @@ class ParaBankAPIClient:
             }
         )
 
+    @staticmethod
+    def initialize_database_static(base_url):
+        """
+        Initialize the ParaBank database without authentication.
+        Static method for utility/cleanup operations.
+        """
+        url = f"{base_url}/parabank/services/bank/initializeDB"
+        response = requests.post(url)
+
+        try:
+            response.raise_for_status()
+            return {
+                "status_code": response.status_code,
+                "data": response.text,
+            }
+        except requests.RequestException as e:
+            return {
+                "status_code": getattr(response, "status_code", None),
+                "error": str(e),
+                "data": getattr(response, "text", None),
+            }
+
+    @staticmethod
+    def register_new_user(base_url, user_data, unique_suffix=True):
+        """
+        Register a new user via HTTP form submission.
+        Static method for user registration without authentication.
+
+        Args:
+            base_url (str): ParaBank base URL
+            user_data (dict): User information containing username, password, full_name
+
+        Returns:
+            dict: Registration result with user info
+        """
+        session = requests.Session()
+
+        try:
+            # Hit register page to obtain cookies (JSESSIONID)
+            landing = session.get(
+                f"{base_url}/parabank/register.htm", allow_redirects=True
+            )
+            landing.raise_for_status()
+
+            # Parse full name into first and last name
+            full_name = user_data["full_name"]
+            name_parts = full_name.split(" ")
+            first_name = name_parts[0]
+            last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+            # Generate unique username and first name if required
+            if unique_suffix:
+                username = user_data["username"] + str(urandom(4).hex())
+                first_name = first_name + str(urandom(2).hex())
+                last_name = last_name + str(urandom(2).hex())
+                full_name = first_name + " " + last_name
+
+            # Prepare registration payload
+            payload = {
+                "customer.firstName": first_name,
+                "customer.lastName": last_name,
+                "customer.address.street": "123 Test Street",
+                "customer.address.city": "Test City",
+                "customer.address.state": "TS",
+                "customer.address.zipCode": "12345",
+                "customer.phoneNumber": "5551234567",
+                "customer.ssn": "11111111",
+                "customer.username": username,
+                "customer.password": user_data["password"],
+                "repeatedPassword": user_data["password"],
+            }
+
+            # Submit registration form
+            register_resp = session.post(
+                f"{base_url}/parabank/register.htm",
+                data=payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                allow_redirects=True,
+            )
+            register_resp.raise_for_status()
+
+            return {
+                "status_code": register_resp.status_code,
+                "data": {
+                    "username": username,
+                    "password": user_data["password"],
+                    "full_name": full_name,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                },
+            }
+
+        except requests.RequestException as e:
+            return {
+                "status_code": (
+                    getattr(register_resp, "status_code", None)
+                    if "register_resp" in locals()
+                    else None
+                ),
+                "error": str(e),
+                "data": None,
+            }
+        finally:
+            session.close()
+
     def _handle_response(self, response):
         """Handle API response and extract relevant data."""
         try:
@@ -29,12 +135,7 @@ class ParaBankAPIClient:
                 except ValueError:
                     pass
 
-            return {
-                "status_code": response.status_code,
-                "data": data,
-                "cookies": self.session.cookies.get_dict(),
-                "session_id": self.session.cookies.get("JSESSIONID"),
-            }
+            return {"status_code": response.status_code, "data": data}
 
         except requests.RequestException as e:
             return {
@@ -76,7 +177,7 @@ class ParaBankAPIClient:
             amount (int, float): Amount to transfer
 
         Returns:
-            dict: Transfer result
+            message: Successfully transferred ${amount} from account #{from_account_id} to account #{to_account_id}
         """
         url = f"{self.base_url}/parabank/services/bank/transfer"
         params = {
@@ -84,40 +185,6 @@ class ParaBankAPIClient:
             "toAccountId": to_account_id,
             "amount": str(amount),
         }
-
-        response = self.session.post(url, params=params)
-        return self._handle_response(response)
-
-    def withdraw_funds(self, account_id, amount):
-        """
-        Withdraw funds from an account.
-
-        Args:
-            account_id (int): Account identifier
-            amount (int, float): Amount to withdraw
-
-        Returns:
-            dict: Withdrawal result
-        """
-        url = f"{self.base_url}/parabank/services/bank/withdraw"
-        params = {"accountId": account_id, "amount": str(amount)}
-
-        response = self.session.post(url, params=params)
-        return self._handle_response(response)
-
-    def deposit_funds(self, account_id, amount):
-        """
-        Deposit funds to an account.
-
-        Args:
-            account_id (str): Account identifier
-            amount (int, float): Amount to deposit
-
-        Returns:
-            dict: Deposit result
-        """
-        url = f"{self.base_url}/parabank/services/bank/deposit"
-        params = {"accountId": account_id, "amount": str(amount)}
 
         response = self.session.post(url, params=params)
         return self._handle_response(response)
@@ -154,34 +221,12 @@ class ParaBankAPIClient:
         response = self.session.post(url, params=params)
         return self._handle_response(response)
 
-    def request_loan(self, customer_id, amount, down_payment, from_account_id):
-        """
-        Request a loan for a customer.
-
-        Args:
-            customer_id (int): Customer identifier
-            amount (float): Loan amount requested
-            down_payment (int, float): Down payment amount
-            from_account_id (int): Account for down payment
-
-        Returns:
-            dict: Loan application result
-        """
-        url = f"{self.base_url}/parabank/services/bank/requestLoan"
-        params = {
-            "customerId": customer_id,
-            "amount": str(amount),
-            "downPayment": str(down_payment),
-            "fromAccountId": from_account_id,
-        }
-
-        response = self.session.post(url, params=params)
-        return self._handle_response(response)
-
-    def initialize_database(self):
-        """Initialize the ParaBank database."""
-        url = f"{self.base_url}/parabank/services/bank/initializeDB"
-        response = self.session.post(url)
+    def get_transactions_by_account_id(self, account_id):
+        """Retrieve transactions for a specific account."""
+        url = (
+            f"{self.base_url}/parabank/services/bank/accounts/{account_id}/transactions"
+        )
+        response = self.session.get(url)
         return self._handle_response(response)
 
     def close(self):

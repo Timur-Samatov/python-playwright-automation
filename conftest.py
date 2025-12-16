@@ -4,6 +4,7 @@ import requests
 import allure
 from dotenv import load_dotenv
 from playwright.sync_api import Browser
+from src.clients.parabank_api_client import ParaBankAPIClient
 
 load_dotenv()
 
@@ -25,59 +26,45 @@ def user_1():
     return user_data
 
 
-@pytest.fixture(scope="session", autouse=True)
-def registered_user(base_url, user_1):
-    """Register a fresh user via HTTP and return credentials + session cookie."""
+@pytest.fixture(scope="function")
+def fresh_registered_user(base_url, user_1):
+    """Register a fresh user via API client and return complete customer information."""
 
-    session = requests.Session()
+    # Register the user using the API client
+    registration_result = ParaBankAPIClient.register_new_user(base_url, user_1)
+    username = registration_result["data"]["username"]
+    full_name = registration_result["data"]["full_name"]
+    first_name = registration_result["data"]["first_name"]
+    last_name = registration_result["data"]["last_name"]
+    password = registration_result["data"]["password"]
 
-    # Hit register page to obtain cookies (JSESSIONID)
-    landing = session.get(f"{base_url}/parabank/register.htm", allow_redirects=True)
-    landing.raise_for_status()
+    if registration_result.get("status_code") != 200:
+        raise requests.HTTPError(f"Failed to register user: {registration_result}")
 
-    first_name = user_1["full_name"].split(" ")[0]
-    last_name = user_1["full_name"].split(" ")[1]
-
-    payload = {
-        "customer.firstName": first_name,
-        "customer.lastName": last_name,
-        "customer.address.street": "Some address",
-        "customer.address.city": "Some City",
-        "customer.address.state": "TS",
-        "customer.address.zipCode": "12345",
-        "customer.phoneNumber": "5551234567",
-        "customer.ssn": "11111111",
-        "customer.username": user_1["username"],
-        "customer.password": user_1["password"],
-        "repeatedPassword": user_1["password"],
-    }
-
-    register_resp = session.post(
-        f"{base_url}/parabank/register.htm",
-        data=payload,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        allow_redirects=True,
-    )
-    register_resp.raise_for_status()
+    # Create API client instance for authenticated requests
+    with ParaBankAPIClient(base_url=base_url, user_data=user_1) as api_client:
+        # Get complete customer information after registration
+        customer_id = api_client.get_customer_id(username, user_1["password"])
 
     return {
-        "username": user_1["username"],
-        "password": user_1["password"],
-        "full_name": user_1["full_name"],
-        "session_id": session.cookies.get("JSESSIONID"),
-        "cookies": session.cookies.get_dict(),
+        "username": username,
+        "full_name": full_name,
+        "first_name": first_name,
+        "last_name": last_name,
+        "password": password,
+        "customer_id": customer_id,
     }
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def initialize_db(base_url):
-    """Reset Parabank DB after the test session finishes."""
+    """Initialize the Parabank Database."""
     yield
-    response = requests.post(f"{base_url}/parabank/services/bank/initializeDB")
-    response.raise_for_status()
 
+    result = ParaBankAPIClient.initialize_database_static(base_url)
 
-# Fixtures run in definition order; registered_user happens first, initialize_db cleanup happens last
+    if result.get("status_code") != 204:
+        raise requests.HTTPError(f"Failed to initialize database: {result}")
 
 
 @pytest.fixture(scope="function")
