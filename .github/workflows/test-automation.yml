@@ -82,17 +82,31 @@ jobs:
           USER_FULLNAME_1: ${{ secrets.USER_FULLNAME_1 }}
         run: |
           poetry run pytest tests/API/ \
-            --alluredir=reports/allure-api \
-            --html=reports/html/api-report.html
+            --alluredir=allure-results \
+            --html=reports/html/api-report.html \
+            -v
 
-      - name: Upload API Test Reports
+      - name: Debug - List Allure Results
+        if: always()
+        run: |
+          echo "=== Allure Results Files ==="
+          ls -la allure-results/ || echo "No allure-results directory"
+          find allure-results/ -name "*.json" | wc -l || echo "0 JSON files"
+
+      - name: Upload API Allure Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: api-test-reports-${{ github.run_number }}
-          path: |
-            reports/allure-api/
-            reports/html/api-report.html
+          name: api-allure-results
+          path: allure-results/
+          retention-days: 30
+
+      - name: Upload API HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-html-report-${{ github.run_number }}
+          path: reports/html/
           retention-days: 30
 
   ui-tests:
@@ -135,26 +149,33 @@ jobs:
         run: |
           poetry run pytest tests/UI/ \
             --browser=chromium \
-            --alluredir=reports/allure-ui \
-            --html=reports/html/ui-report.html
+            --alluredir=allure-results \
+            --html=reports/html/ui-report.html \
+            -v
 
-      - name: Upload UI Test Reports
+      - name: Debug - List Allure Results
+        if: always()
+        run: |
+          echo "=== Allure Results Files ==="
+          ls -la allure-results/ || echo "No allure-results directory"
+          find allure-results/ -name "*.json" | wc -l || echo "0 JSON files"
+
+      - name: Upload UI Allure Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ui-test-reports-${{ github.run_number }}
-          path: |
-            reports/allure-ui/
-            reports/html/ui-report.html
-            test-results/
+          name: ui-allure-results
+          path: allure-results/
           retention-days: 30
 
-      - name: Upload Playwright Report
+      - name: Upload UI HTML Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-${{ github.run_number }}
-          path: playwright-report/
+          name: ui-html-report-${{ github.run_number }}
+          path: |
+            reports/html/
+            test-results/
           retention-days: 30
 
   generate-allure-report:
@@ -162,29 +183,103 @@ jobs:
     runs-on: ubuntu-latest
     needs: [api-tests, ui-tests]
     if: always()
+    permissions:
+      contents: write
+      pages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download API Test Results
+      - name: Download API Allure Results
         uses: actions/download-artifact@v4
         with:
-          name: api-test-reports-${{ github.run_number }}
-          path: reports/
+          name: api-allure-results
+          path: downloaded-results/api/
 
-      - name: Download UI Test Results
+      - name: Download UI Allure Results
         uses: actions/download-artifact@v4
         with:
-          name: ui-test-reports-${{ github.run_number }}
-          path: reports/
+          name: ui-allure-results
+          path: downloaded-results/ui/
+
+      - name: Debug - Show Downloaded Structure
+        run: |
+          echo "=== Downloaded Results Structure ==="
+          echo "API Results:"
+          ls -la downloaded-results/api/ || echo "No API results"
+          find downloaded-results/api/ -name "*.json" | wc -l
+          echo ""
+          echo "UI Results:"
+          ls -la downloaded-results/ui/ || echo "No UI results"
+          find downloaded-results/ui/ -name "*.json" | wc -l
+
+      - name: Combine Allure Results
+        run: |
+          mkdir -p combined-allure-results
+
+          # Copy API results
+          if [ -d "downloaded-results/api" ] && [ "$(ls -A downloaded-results/api 2>/dev/null)" ]; then
+            cp -r downloaded-results/api/* combined-allure-results/
+            echo "✅ Copied $(find downloaded-results/api -name '*.json' | wc -l) API result files"
+          else
+            echo "⚠️ No API results found"
+          fi
+
+          # Copy UI results
+          if [ -d "downloaded-results/ui" ] && [ "$(ls -A downloaded-results/ui 2>/dev/null)" ]; then
+            cp -r downloaded-results/ui/* combined-allure-results/
+            echo "✅ Copied $(find downloaded-results/ui -name '*.json' | wc -l) UI result files"
+          else
+            echo "⚠️ No UI results found"
+          fi
+
+          echo ""
+          echo "=== Combined Results ==="
+          ls -la combined-allure-results/
+          echo "Total JSON files: $(find combined-allure-results -name '*.json' | wc -l)"
+
+      - name: Get Allure History
+        uses: actions/checkout@v4
+        if: always()
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Setup Allure History
+        run: |
+          mkdir -p allure-history
+          if [ -d "gh-pages/reports" ]; then
+            # Get the latest report number
+            latest=$(ls -d gh-pages/reports/*/ 2>/dev/null | sort -t/ -k4 -n | tail -1)
+            if [ -d "$latest/history" ]; then
+              cp -r "$latest/history"/* allure-history/ 2>/dev/null || true
+              echo "✅ Copied history from $latest"
+            fi
+          fi
 
       - name: Generate Allure Report
-        uses: simple-elf/allure-report-action@master
+        uses: simple-elf/allure-report-action@v1.9
         with:
-          allure_results: reports/allure-api,reports/allure-ui
+          allure_results: combined-allure-results
           allure_report: allure-report
           allure_history: allure-history
+          keep_reports: 10
+
+      - name: Debug - Verify Generated Report
+        run: |
+          echo "=== Generated Report Structure ==="
+          ls -la allure-report/
+          echo ""
+          echo "HTML files:"
+          find allure-report/ -name "*.html" | head -5
+          echo ""
+          echo "Data directory:"
+          ls -la allure-report/data/ 2>/dev/null || echo "No data directory"
+          echo ""
+          echo "Widgets directory:"
+          ls -la allure-report/widgets/ 2>/dev/null || echo "No widgets directory"
 
       - name: Upload Combined Allure Report
         uses: actions/upload-artifact@v4
@@ -200,3 +295,9 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: allure-report
           destination_dir: reports/${{ github.run_number }}
+          keep_files: true
+
+      - name: Print Report URL
+        run: |
+          echo "📊 Allure Report URL:"
+          echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ github.run_number }}/"
