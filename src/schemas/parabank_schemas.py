@@ -1,4 +1,5 @@
 from src.enums.account_types import AccountType
+from src.enums.transaction_types import TransactionType
 
 
 class ParaBankSchemas:
@@ -25,3 +26,27 @@ class ParaBankSchemas:
     def get_accounts_list_schema(cls):
         """Returns schema for validating a list of accounts."""
         return {"type": "array", "items": cls.get_account_schema(), "minItems": 1}
+
+    @classmethod
+    def get_transaction_schema(cls):
+        """Returns schema for validating a single transaction."""
+        return {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer"},
+                "accountId": {"type": "integer"},
+                "type": {
+                    "type": "string",
+                    "enum": [t_type.value for t_type in TransactionType],
+                },
+                "amount": {"type": "number"},
+                "date": {"type": "number"},
+                "description": {"type": "string"},
+            },
+            "required": ["id", "accountId", "type", "amount", "date", "description"],
+        }
+
+    @classmethod
+    def get_transactions_list_schema(cls):
+        """Returns schema for validating a list of transactions."""
+        return {"type": "array", "items": cls.get_transaction_schema()}
