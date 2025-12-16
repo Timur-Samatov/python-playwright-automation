@@ -12,7 +12,7 @@ load_dotenv()
 @pytest.fixture(scope="session")
 def base_url():
     """Returns the base URL for the Parabank application."""
-    return "https://parabank.parasoft.com"
+    return os.getenv("BASE_URL", "https://parabank.parasoft.com")
 
 
 @pytest.fixture(scope="session")
