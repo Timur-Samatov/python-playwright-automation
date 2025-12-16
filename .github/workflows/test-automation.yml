@@ -172,16 +172,12 @@ jobs:
           # Copy API results
           if [ -d "downloaded-results/api" ] && [ "$(ls -A downloaded-results/api 2>/dev/null)" ]; then
             cp -r downloaded-results/api/* combined-allure-results/
-            echo "✅ Copied API results: $(find downloaded-results/api -name '*.json' | wc -l) files"
           fi
 
           # Copy UI results
           if [ -d "downloaded-results/ui" ] && [ "$(ls -A downloaded-results/ui 2>/dev/null)" ]; then
             cp -r downloaded-results/ui/* combined-allure-results/
-            echo "✅ Copied UI results: $(find downloaded-results/ui -name '*.json' | wc -l) files"
           fi
-
-          echo "Total combined files: $(find combined-allure-results -type f | wc -l)"
 
       - name: Install Java for Allure
         run: |
@@ -194,7 +190,6 @@ jobs:
           tar -xzf allure-2.25.0.tgz
           sudo mv allure-2.25.0 /opt/allure
           sudo ln -s /opt/allure/bin/allure /usr/bin/allure
-          allure --version
 
       - name: Generate Allure Report
         run: |
@@ -208,16 +203,30 @@ jobs:
           path: allure-report/
           retention-days: 30
 
+      - name: Prepare Report for Deployment
+        run: |
+          # Create the structure for deployment
+          mkdir -p deployment/reports/${{ github.run_number }}
+          mkdir -p deployment/reports/latest
+
+          # 1. Copy report to the numbered folder (preserves history)
+          cp -r allure-report/* deployment/reports/${{ github.run_number }}/
+
+          # 2. Copy the SAME report to the latest folder (physical copy, not symlink)
+          cp -r allure-report/* deployment/reports/latest/
+
+          echo "✅ Prepared deployment folder with report #${{ github.run_number }} and latest copy."
+
       - name: Deploy to GitHub Pages
         if: always()
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: allure-report
-          destination_dir: reports/${{ github.run_number }}
+          publish_dir: deployment
           keep_files: true
 
-      - name: Print Report URL
+      - name: Print Report URLs
         run: |
-          echo "📊 Allure Report URL:"
-          echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ github.run_number }}/"
+          echo "📊 Allure Report URLs:"
+          echo "Current: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ github.run_number }}/"
+          echo "Latest:  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/latest/"
