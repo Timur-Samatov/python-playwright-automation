@@ -35,11 +35,8 @@ jobs:
 
           if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 204 ]; then
             echo "✅ Database initialized successfully (HTTP: $http_code)"
-            echo "status=success" >> $GITHUB_OUTPUT
           else
             echo "❌ Database initialization failed (HTTP: $http_code)"
-            echo "Response: $response"
-            echo "status=failure" >> $GITHUB_OUTPUT
             exit 1
           fi
 
@@ -66,8 +63,6 @@ jobs:
         uses: snok/install-poetry@v1
         with:
           version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
 
       - name: Install dependencies
         run: |
@@ -86,27 +81,12 @@ jobs:
             --html=reports/html/api-report.html \
             -v
 
-      - name: Debug - List Allure Results
-        if: always()
-        run: |
-          echo "=== Allure Results Files ==="
-          ls -la allure-results/ || echo "No allure-results directory"
-          find allure-results/ -name "*.json" | wc -l || echo "0 JSON files"
-
       - name: Upload API Allure Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: api-allure-results
           path: allure-results/
-          retention-days: 30
-
-      - name: Upload API HTML Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: api-html-report-${{ github.run_number }}
-          path: reports/html/
           retention-days: 30
 
   ui-tests:
@@ -132,8 +112,6 @@ jobs:
         uses: snok/install-poetry@v1
         with:
           version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
 
       - name: Install dependencies
         run: |
@@ -153,29 +131,12 @@ jobs:
             --html=reports/html/ui-report.html \
             -v
 
-      - name: Debug - List Allure Results
-        if: always()
-        run: |
-          echo "=== Allure Results Files ==="
-          ls -la allure-results/ || echo "No allure-results directory"
-          find allure-results/ -name "*.json" | wc -l || echo "0 JSON files"
-
       - name: Upload UI Allure Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ui-allure-results
           path: allure-results/
-          retention-days: 30
-
-      - name: Upload UI HTML Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ui-html-report-${{ github.run_number }}
-          path: |
-            reports/html/
-            test-results/
           retention-days: 30
 
   generate-allure-report:
@@ -186,6 +147,7 @@ jobs:
     permissions:
       contents: write
       pages: write
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -203,17 +165,6 @@ jobs:
           name: ui-allure-results
           path: downloaded-results/ui/
 
-      - name: Debug - Show Downloaded Structure
-        run: |
-          echo "=== Downloaded Results Structure ==="
-          echo "API Results:"
-          ls -la downloaded-results/api/ || echo "No API results"
-          find downloaded-results/api/ -name "*.json" | wc -l
-          echo ""
-          echo "UI Results:"
-          ls -la downloaded-results/ui/ || echo "No UI results"
-          find downloaded-results/ui/ -name "*.json" | wc -l
-
       - name: Combine Allure Results
         run: |
           mkdir -p combined-allure-results
@@ -221,68 +172,37 @@ jobs:
           # Copy API results
           if [ -d "downloaded-results/api" ] && [ "$(ls -A downloaded-results/api 2>/dev/null)" ]; then
             cp -r downloaded-results/api/* combined-allure-results/
-            echo "✅ Copied $(find downloaded-results/api -name '*.json' | wc -l) API result files"
-          else
-            echo "⚠️ No API results found"
+            echo "✅ Copied API results: $(find downloaded-results/api -name '*.json' | wc -l) files"
           fi
 
           # Copy UI results
           if [ -d "downloaded-results/ui" ] && [ "$(ls -A downloaded-results/ui 2>/dev/null)" ]; then
             cp -r downloaded-results/ui/* combined-allure-results/
-            echo "✅ Copied $(find downloaded-results/ui -name '*.json' | wc -l) UI result files"
-          else
-            echo "⚠️ No UI results found"
+            echo "✅ Copied UI results: $(find downloaded-results/ui -name '*.json' | wc -l) files"
           fi
 
-          echo ""
-          echo "=== Combined Results ==="
-          ls -la combined-allure-results/
-          echo "Total JSON files: $(find combined-allure-results -name '*.json' | wc -l)"
+          echo "Total combined files: $(find combined-allure-results -type f | wc -l)"
 
-      - name: Get Allure History
-        uses: actions/checkout@v4
-        if: always()
-        continue-on-error: true
-        with:
-          ref: gh-pages
-          path: gh-pages
-
-      - name: Setup Allure History
+      - name: Install Java for Allure
         run: |
-          mkdir -p allure-history
-          if [ -d "gh-pages/reports" ]; then
-            # Get the latest report number
-            latest=$(ls -d gh-pages/reports/*/ 2>/dev/null | sort -t/ -k4 -n | tail -1)
-            if [ -d "$latest/history" ]; then
-              cp -r "$latest/history"/* allure-history/ 2>/dev/null || true
-              echo "✅ Copied history from $latest"
-            fi
-          fi
+          sudo apt-get update
+          sudo apt-get install -y default-jre
+
+      - name: Install Allure
+        run: |
+          wget https://github.com/allure-framework/allure2/releases/download/2.25.0/allure-2.25.0.tgz
+          tar -xzf allure-2.25.0.tgz
+          sudo mv allure-2.25.0 /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+          allure --version
 
       - name: Generate Allure Report
-        uses: simple-elf/allure-report-action@v1.9
-        with:
-          allure_results: combined-allure-results
-          allure_report: allure-report
-          allure_history: allure-history
-          keep_reports: 10
-
-      - name: Debug - Verify Generated Report
         run: |
-          echo "=== Generated Report Structure ==="
-          ls -la allure-report/
-          echo ""
-          echo "HTML files:"
-          find allure-report/ -name "*.html" | head -5
-          echo ""
-          echo "Data directory:"
-          ls -la allure-report/data/ 2>/dev/null || echo "No data directory"
-          echo ""
-          echo "Widgets directory:"
-          ls -la allure-report/widgets/ 2>/dev/null || echo "No widgets directory"
+          allure generate combined-allure-results -o allure-report --clean
 
-      - name: Upload Combined Allure Report
+      - name: Upload Allure Report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: allure-report-${{ github.run_number }}
           path: allure-report/
