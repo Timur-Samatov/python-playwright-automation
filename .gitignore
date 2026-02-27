@@ -50,6 +50,9 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+reports/
+!reports/.gitkeep
+test-results/
 
 # Translations
 *.mo

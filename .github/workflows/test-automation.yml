@@ -1,0 +1,232 @@
+name: Test Automation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  PYTHON_VERSION: "3.14"
+  NODE_VERSION: "20"
+
+jobs:
+  initialize-database:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ secrets.BASE_URL || 'https://parabank.parasoft.com' }}
+
+    steps:
+      - name: Initialize ParaBank Database
+        id: init-db
+        run: |
+          echo "Initializing ParaBank database..."
+
+          response=$(curl -X POST "${{ env.BASE_URL }}/parabank/services/bank/initializeDB" \
+            --silent \
+            --write-out "HTTPSTATUS:%{http_code}" \
+            --fail-with-body \
+            --retry 3 \
+            --retry-delay 5 \
+            --max-time 60)
+
+          # Extract HTTP status code
+          http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 204 ]; then
+            echo "✅ Database initialized successfully (HTTP: $http_code)"
+          else
+            echo "❌ Database initialization failed (HTTP: $http_code)"
+            exit 1
+          fi
+
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    needs: [initialize-database]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: |
+          poetry install
+          poetry run playwright install --with-deps chromium
+
+      - name: Run API Tests
+        env:
+          BASE_URL: ${{ secrets.BASE_URL || 'https://parabank.parasoft.com' }}
+          USERNAME_1: ${{ secrets.USERNAME_1 }}
+          PASSWORD_1: ${{ secrets.PASSWORD_1 }}
+          USER_FULLNAME_1: ${{ secrets.USER_FULLNAME_1 }}
+        run: |
+          poetry run pytest tests/API/ \
+            --alluredir=allure-results \
+            --html=reports/html/api-report.html \
+            -v
+
+      - name: Upload API Allure Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-allure-results
+          path: allure-results/
+          retention-days: 30
+
+  ui-tests:
+    name: UI Tests
+    runs-on: ubuntu-latest
+    needs: [initialize-database]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: |
+          poetry install
+          poetry run playwright install --with-deps chromium
+
+      - name: Run UI Tests
+        env:
+          BASE_URL: ${{ secrets.BASE_URL || 'https://parabank.parasoft.com' }}
+          USERNAME_1: ${{ secrets.USERNAME_1 }}
+          PASSWORD_1: ${{ secrets.PASSWORD_1 }}
+          USER_FULLNAME_1: ${{ secrets.USER_FULLNAME_1 }}
+        run: |
+          poetry run pytest tests/UI/ \
+            --browser=chromium \
+            --alluredir=allure-results \
+            --html=reports/html/ui-report.html \
+            -v
+
+      - name: Upload UI Allure Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-allure-results
+          path: allure-results/
+          retention-days: 30
+
+  generate-allure-report:
+    name: Generate Allure Report
+    runs-on: ubuntu-latest
+    needs: [api-tests, ui-tests]
+    if: always()
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download API Allure Results
+        uses: actions/download-artifact@v4
+        with:
+          name: api-allure-results
+          path: downloaded-results/api/
+
+      - name: Download UI Allure Results
+        uses: actions/download-artifact@v4
+        with:
+          name: ui-allure-results
+          path: downloaded-results/ui/
+
+      - name: Combine Allure Results
+        run: |
+          mkdir -p combined-allure-results
+
+          # Copy API results
+          if [ -d "downloaded-results/api" ] && [ "$(ls -A downloaded-results/api 2>/dev/null)" ]; then
+            cp -r downloaded-results/api/* combined-allure-results/
+          fi
+
+          # Copy UI results
+          if [ -d "downloaded-results/ui" ] && [ "$(ls -A downloaded-results/ui 2>/dev/null)" ]; then
+            cp -r downloaded-results/ui/* combined-allure-results/
+          fi
+
+      - name: Install Java for Allure
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-jre
+
+      - name: Install Allure
+        run: |
+          wget https://github.com/allure-framework/allure2/releases/download/2.25.0/allure-2.25.0.tgz
+          tar -xzf allure-2.25.0.tgz
+          sudo mv allure-2.25.0 /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+
+      - name: Generate Allure Report
+        run: |
+          allure generate combined-allure-results -o allure-report --clean
+
+      - name: Upload Allure Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-report-${{ github.run_number }}
+          path: allure-report/
+          retention-days: 30
+
+      - name: Prepare Report for Deployment
+        run: |
+          # Create the structure for deployment
+          mkdir -p deployment/reports/${{ github.run_number }}
+          mkdir -p deployment/reports/latest
+
+          # 1. Copy report to the numbered folder (preserves history)
+          cp -r allure-report/* deployment/reports/${{ github.run_number }}/
+
+          # 2. Copy the SAME report to the latest folder (physical copy, not symlink)
+          cp -r allure-report/* deployment/reports/latest/
+
+          echo "✅ Prepared deployment folder with report #${{ github.run_number }} and latest copy."
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: deployment
+          keep_files: true
+
+      - name: Print Report URLs
+        run: |
+          echo "📊 Allure Report URLs:"
+          echo "Current: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ github.run_number }}/"
+          echo "Latest:  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/latest/"
