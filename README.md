@@ -15,8 +15,8 @@ A comprehensive test automation framework for testing the ParaBank banking appli
 1. **Clone the repository**
 
    ```bash
-   git clone <repository-url>
-   cd demo-banking-website
+   git clone https://github.com/Timur-Samatov/python-playwright-automation
+   cd python-playwright-automation
    ```
 
 2. **Install Poetry** (Python dependency manager)
