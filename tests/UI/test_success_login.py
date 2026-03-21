@@ -1,7 +1,6 @@
 import allure
 from playwright.sync_api import expect
-from pages.home_page import HomePage
-from pages.overview_page import OverviewPage
+from pages import HomePage, OverviewPage
 
 
 def test_success_login(page, base_url, fresh_registered_user):

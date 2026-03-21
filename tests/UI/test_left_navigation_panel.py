@@ -1,13 +1,5 @@
 import allure
-from playwright.sync_api import expect
-from pages.home_page import HomePage
-from pages.overview_page import OverviewPage
-from pages.open_account_page import OpenAccountPage
-from pages.transfer_page import TransferPage
-from pages.bill_payment_page import BillPayPage
-from pages.find_transactions_page import FindTransactionsPage
-from pages.update_profile_page import UpdateProfilePage
-from pages.request_loan_page import RequestLoanPage
+from pages import *
 
 
 def test_left_navigation_panel(page, base_url, fresh_registered_user):

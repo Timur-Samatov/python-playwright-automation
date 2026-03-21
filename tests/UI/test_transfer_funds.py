@@ -1,8 +1,6 @@
 import allure
 from playwright.sync_api import expect
-from pages.home_page import HomePage
-from pages.activity_page import ActivityPage
-from pages.transfer_page import TransferPage
+from pages import HomePage, ActivityPage, TransferPage
 from src.clients.parabank_api_client import ParaBankAPIClient
 from src.enums.account_types import AccountType
 from src.utils.currency_utils import format_currency
