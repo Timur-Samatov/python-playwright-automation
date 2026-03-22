@@ -102,6 +102,18 @@ poetry run pytest tests/API/ -s -v
 
 ## Allure Reporting Commands
 
+### Install Allure CLI
+
+- macOS (Homebrew):
+  ```bash
+  brew install allure
+  ```
+
+- npm (generic cross-platform):
+  ```bash
+  npm i -g allure-commandline
+  ```
+
 ### Generate Allure Reports
 
 ```bash

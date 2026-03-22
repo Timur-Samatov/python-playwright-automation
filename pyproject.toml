@@ -19,7 +19,8 @@ dev = [
     "allure-pytest (>=2.15.2,<3.0.0)",
     "python-dotenv (>=1.2.1,<2.0.0)",
     "jsonschema (>=4.25.1,<5.0.0)",
-    "pytest-html (>=4.1.1,<5.0.0)"
+    "pytest-html (>=4.1.1,<5.0.0)",
+    "axe-core-python (>=0.1.0,<0.2.0); python_version >= \"3.14\" and python_version < \"4.0\""
 ]
 
 
