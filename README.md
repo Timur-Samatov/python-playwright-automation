@@ -398,5 +398,3 @@ validation_result = validator.validate_response(
 
 assert validation_result["valid"], f"Validation failed: {validation_result['errors']}"
 ```
-
-test
