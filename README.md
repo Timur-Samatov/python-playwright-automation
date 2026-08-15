@@ -105,6 +105,7 @@ poetry run pytest tests/API/ -s -v
 ### Install Allure CLI
 
 - macOS (Homebrew):
+
   ```bash
   brew install allure
   ```
@@ -232,7 +233,6 @@ jobs:
 #### **Pipeline Steps Overview**
 
 1. **Environment Setup** (Automated)
-
    - ✅ Checkout code from repository
    - ✅ Install Python 3.14 and Node.js 20
    - ✅ Install Poetry dependency manager
@@ -256,13 +256,11 @@ jobs:
    ```
 
 4. **Report Generation** (Automated)
-
    - 📊 Allure interactive reports
    - 📄 HTML self-contained reports
    - 📸 Screenshots for failed tests
 
 5. **Artifact Storage** (30-day retention)
-
    - 💾 Test reports uploaded to GitHub
 
 6. **Deployment to GitHub Pages**
@@ -400,3 +398,5 @@ validation_result = validator.validate_response(
 
 assert validation_result["valid"], f"Validation failed: {validation_result['errors']}"
 ```
+
+test
