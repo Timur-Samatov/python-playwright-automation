@@ -19,8 +19,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.14"
-  NODE_VERSION: "20"
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NODE_VERSION: "24"
 
 jobs:
   initialize-database:
