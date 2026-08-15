@@ -5,6 +5,17 @@ on:
     branches: [main, develop]
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: "Test suite to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - api
+          - ui
 
 env:
   PYTHON_VERSION: "3.14"
